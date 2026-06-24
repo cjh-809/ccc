@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智教伴学 | AI 智能辅导助手</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; background-color: #f4f7f9; display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { 
+            width: 420px; padding: 40px 28px 28px;
+            background: linear-gradient(160deg, #084aee 0%, #0cccf7 100%);
+            color: white; display: flex; flex-direction: column;
+            box-shadow: 5px 0 20px rgba(0,0,0,0.1); overflow-y: auto;
+        }
+        .sidebar h1 { font-size: 2.2em; margin-bottom: 16px; letter-spacing: 1px; }
+        .sidebar > p { font-size: 1.05em; line-height: 1.6; margin-bottom: 24px; opacity: 0.9; }
+        .features { display: flex; flex-direction: column; gap: 12px; }
+        .feature-item { background: rgba(255,255,255,0.15); padding: 16px 18px; border-radius: 12px; backdrop-filter: blur(5px); }
+        .feature-item h3 { margin-bottom: 6px; color: #fff; font-size: 1.05em; }
+        .feature-item p { font-size: 0.9em; opacity: 0.85; line-height: 1.5; }
+
+        .stats-panel {
+            margin-top: 20px; background: rgba(255,255,255,0.12);
+            border-radius: 14px; padding: 18px; backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .stats-panel-title {
+            font-size: 13px; font-weight: 600; letter-spacing: 1px; opacity: 0.8;
+            margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between;
+        }
+        .mode-badge { font-size: 10px; padding: 2px 8px; border-radius: 99px; font-weight: 500; transition: all 0.3s; }
+        .mode-badge.auto { background: rgba(111,255,196,0.25); color: #6fffc4; border: 1px solid rgba(111,255,196,0.4); }
+        .mode-badge.manual { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.2); }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+        .stat-card { background: rgba(255,255,255,0.18); border-radius: 10px; padding: 10px 12px; text-align: center; }
+        .stat-card.flash { animation: flashCard 0.4s ease; }
+        @keyframes flashCard { 0%{transform:scale(1)} 50%{transform:scale(1.06)} 100%{transform:scale(1)} }
+        .stat-card .s-label { font-size: 11px; opacity: 0.7; margin-bottom: 3px; }
+        .stat-card .s-value { font-size: 24px; font-weight: 700; color: #fff; }
+        .stat-card.rate-card .s-value { color: #7df7ff; }
+        .stat-card.correct-card .s-value { color: #6fffc4; }
+        .stat-card.wrong-card .s-value { color: #ffb59e; }
+        .progress-wrap { margin-bottom: 14px; }
+        .progress-bar-bg { height: 8px; background: rgba(255,255,255,0.15); border-radius: 99px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg,#6fffc4,#00e5ff); border-radius: 99px; transition: width 0.4s ease; }
+        .progress-labels { display: flex; justify-content: space-between; font-size: 10px; opacity: 0.6; margin-top: 4px; }
+        .manual-section { border-top: 1px solid rgba(255,255,255,0.12); padding-top: 12px; margin-top: 4px; }
+        .manual-hint { font-size: 11px; opacity: 0.5; margin-bottom: 10px; text-align: center; }
+        .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+        .btn-correct, .btn-wrong {
+            padding: 9px 6px; border: none; border-radius: 9px; font-size: 13px; font-weight: 600;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px;
+            transition: opacity 0.15s, transform 0.1s;
+        }
+        .btn-correct:active, .btn-wrong:active { transform: scale(0.96); }
+        .btn-correct { background: rgba(111,255,196,0.25); color: #6fffc4; border: 1px solid rgba(111,255,196,0.4); }
+        .btn-correct:hover { background: rgba(111,255,196,0.35); }
+        .btn-wrong { background: rgba(255,181,158,0.25); color: #ffb59e; border: 1px solid rgba(255,181,158,0.4); }
+        .btn-wrong:hover { background: rgba(255,181,158,0.35); }
+        .btn-reset {
+            width: 100%; padding: 7px; background: transparent;
+            border: 1px solid rgba(255,255,255,0.2); border-radius: 9px;
+            color: rgba(255,255,255,0.55); font-size: 12px; cursor: pointer; transition: background 0.15s;
+        }
+        .btn-reset:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); }
+        .chat-container { flex: 1; background: white; }
+        #coze-chat { width: 100%; height: 100%; }
+        .toast {
+            position: fixed; bottom: 30px; left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: rgba(20,20,30,0.85); color: #fff;
+            padding: 8px 18px; border-radius: 99px; font-size: 13px;
+            opacity: 0; pointer-events: none; transition: opacity 0.25s, transform 0.25s;
+            z-index: 9999; white-space: nowrap;
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h1>智教伴学</h1>
+        <p>致力于为中小学师生及家长提供一站式智能服务。无论是备课、辅导还是学习规划，都能提供专业、耐心的支持！</p>
+        <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 24px; border-top: 1px solid rgba(255,255,255,0.3); padding-top: 10px;">
+        中小学语数英智能教学管理辅助系统
+        </p>
+        <div class="features">
+            <div class="feature-item">
+                <h3>👨‍🏫 教师好帮手</h3>
+                <p>辅助生成高质量教案，分析学情数据，让教学管理更科学、高效。</p>
+            </div>
+            <div class="feature-item">
+                <h3>👩‍🎓 学生学习伙伴</h3>
+                <p>提供知识点精讲、错题智能归纳与复习，辅导难题，自适应检测学习水平。</p>
+            </div>
+            <div class="feature-item">
+                <h3>🏠 家校沟通桥梁</h3>
+                <p>协助检查作业，提供科学的学习反馈报告与专业的育儿建议。</p>
+            </div>
+        </div>
+
+        <div class="stats-panel">
+            <div class="stats-panel-title">
+                <span>📊 做题统计</span>
+                <span class="mode-badge manual" id="mode-badge">手动模式</span>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card" id="card-total"><div class="s-label">总题数</div><div class="s-value" id="stat-total">0</div></div>
+                <div class="stat-card rate-card" id="card-rate"><div class="s-label">正确率</div><div class="s-value" id="stat-rate">—</div></div>
+                <div class="stat-card correct-card" id="card-correct"><div class="s-label">✓ 答对</div><div class="s-value" id="stat-correct">0</div></div>
+                <div class="stat-card wrong-card" id="card-wrong"><div class="s-label">✗ 答错</div><div class="s-value" id="stat-wrong">0</div></div>
+            </div>
+            <div class="progress-wrap">
+                <div class="progress-bar-bg"><div class="progress-bar-fill" id="progress-fill"></div></div>
+                <div class="progress-labels"><span>0%</span><span>正确率进度</span><span>100%</span></div>
+            </div>
+            <div class="manual-section">
+                <div class="manual-hint" id="manual-hint">完成一道题后，点击记录结果 👇</div>
+                <div class="btn-row">
+                    <button class="btn-correct" onclick="recordAnswer(true, false)">✓ 答对了</button>
+                    <button class="btn-wrong" onclick="recordAnswer(false, false)">✗ 答错了</button>
+                </div>
+                <button class="btn-reset" onclick="resetStats()">↺ 重置统计</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="chat-container"><div id="coze-chat"></div></div>
+    <div class="toast" id="toast"></div>
+
+    <script src="https://lf-cdn.coze.cn/obj/unpkg/flow-platform/chat-app-sdk/1.2.0-beta.19/libs/cn/index.js"></script>
+    <script>
+      const STORAGE_KEY = 'zhijiao_stats';
+
+      // 已完成记录的气泡（用气泡元素本身作为 key，存入 WeakSet）
+      const processedBubbles = new WeakSet();
+
+      // 每个正在输出的气泡的防抖定时器（element -> timerId）
+      const bubbleTimers = new Map();
+
+      // 防抖延迟：气泡停止变化多少毫秒后视为输出完成
+      const DEBOUNCE_MS = 600;
+
+      function loadStats() {
+        try { const s = localStorage.getItem(STORAGE_KEY); return s ? JSON.parse(s) : {correct:0,wrong:0}; }
+        catch(e) { return {correct:0,wrong:0}; }
+      }
+      function saveStats(s) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch(e){} }
+
+      function flashCard(id) {
+        const el = document.getElementById(id);
+        el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+        setTimeout(() => el.classList.remove('flash'), 400);
+      }
+
+      function updateDisplay(changed) {
+        const s = loadStats(), total = s.correct + s.wrong;
+        const rate = total > 0 ? Math.round(s.correct / total * 100) : null;
+        document.getElementById('stat-total').textContent = total;
+        document.getElementById('stat-correct').textContent = s.correct;
+        document.getElementById('stat-wrong').textContent = s.wrong;
+        document.getElementById('stat-rate').textContent = rate !== null ? rate + '%' : '—';
+        document.getElementById('progress-fill').style.width = (rate||0) + '%';
+        if (changed === true)  { flashCard('card-correct'); flashCard('card-total'); flashCard('card-rate'); }
+        if (changed === false) { flashCard('card-wrong');   flashCard('card-total'); flashCard('card-rate'); }
+      }
+
+      function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg; t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2500);
+      }
+
+      function setAutoMode() {
+        document.getElementById('mode-badge').textContent = '自动识别';
+        document.getElementById('mode-badge').className = 'mode-badge auto';
+        document.getElementById('manual-hint').textContent = '已自动统计，也可手动补录 👇';
+      }
+
+      function recordAnswer(isCorrect, fromAuto) {
+        const s = loadStats();
+        if (isCorrect) s.correct++; else s.wrong++;
+        saveStats(s); updateDisplay(isCorrect);
+        if (fromAuto) {
+          showToast(isCorrect ? '✓ 自动识别：答对了！' : '✗ 自动识别：答错了');
+        } else {
+          const btn = isCorrect ? document.querySelector('.btn-correct') : document.querySelector('.btn-wrong');
+          const orig = btn.textContent;
+          btn.textContent = isCorrect ? '✓ 已记录！' : '✗ 已记录！';
+          btn.style.opacity = '0.6';
+          setTimeout(() => { btn.textContent = orig; btn.style.opacity = '1'; }, 800);
+        }
+      }
+
+      function resetStats() {
+        if (!confirm('确定要重置所有题目统计吗？')) return;
+        saveStats({correct:0, wrong:0}); updateDisplay(null);
+      }
+
+      updateDisplay(null);
+
+      new CozeWebSDK.WebChatClient({
+        container: '#coze-chat',
+        config: { bot_id: '7653745666023850020', isDebug: false },
+        componentProps: { title: '智教伴学AI', theme: 'light' },
+        auth: {
+          type: 'token',
+          token: 'pat_XhMDKshreM0TnVwgzcSTuQSPkhrUklgVwSrzRGIy0YqXzAGH4GM2wt8mOuvRExwC',
+          onRefreshToken: function() { return 'pat_XhMDKshreM0TnVwgzcSTuQSPkhrUklgVwSrzRGIy0YqXzAGH4GM2wt8mOuvRExwC'; }
+        }
+      });
+
+      /**
+       * 找到包含文本节点的最近"气泡"祖先元素。
+       * 策略：向上找 4 层，取最大的稳定容器；
+       * 如果找不到就直接用 parentElement。
+       */
+      function getBubbleAncestor(node) {
+        let el = node.parentElement;
+        for (let i = 0; i < 4 && el && el !== document.body; i++) {
+          el = el.parentElement || el;
+        }
+        return el || node.parentElement;
+      }
+
+      /**
+       * 对一个气泡元素启动（或重置）防抖定时器。
+       * 气泡停止变化 DEBOUNCE_MS 后，读取其最终文本并判断结果。
+       */
+      function scheduleBubbleCheck(bubbleEl) {
+        // 清除旧定时器（内容还在更新，重新计时）
+        if (bubbleTimers.has(bubbleEl)) {
+          clearTimeout(bubbleTimers.get(bubbleEl));
+        }
+
+        const timerId = setTimeout(() => {
+          bubbleTimers.delete(bubbleEl);
+
+          // 已经记录过这个气泡，跳过
+          if (processedBubbles.has(bubbleEl)) return;
+
+          const finalText = bubbleEl.textContent || '';
+          if (finalText.includes('[RESULT:CORRECT]') || finalText.includes('[RESULT:WRONG]')) {
+            processedBubbles.add(bubbleEl); // 标记，防止重复记录
+            setAutoMode();
+            recordAnswer(finalText.includes('[RESULT:CORRECT]'), true);
+          }
+        }, DEBOUNCE_MS);
+
+        bubbleTimers.set(bubbleEl, timerId);
+      }
+
+      /**
+       * 扫描一个 root（含 shadow DOM），找所有包含 [RESULT:] 的文本节点，
+       * 对其所在气泡启动防抖检查。
+       */
+      function scanRoot(root) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+        let node;
+        while (node = walker.nextNode()) {
+          if (node.textContent.includes('[RESULT:')) {
+            const bubble = getBubbleAncestor(node);
+            if (bubble) scheduleBubbleCheck(bubble);
+          }
+        }
+        // 递归处理 shadow DOM
+        root.querySelectorAll('*').forEach(el => {
+          if (el.shadowRoot) scanRoot(el.shadowRoot);
+        });
+      }
+
+      function startObserver() {
+        const observer = new MutationObserver(() => scanRoot(document.body));
+        observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+      }
+
+      setTimeout(startObserver, 2000);
+    </script>
+</body>
+</html>
